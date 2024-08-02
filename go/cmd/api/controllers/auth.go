@@ -10,27 +10,36 @@ import (
 	"github.com/Shota0616/go-sns/models"
 	"github.com/Shota0616/go-sns/auth"
 	"golang.org/x/crypto/bcrypt"
+	"log"
 )
 
 
 func Register(c *gin.Context) {
+	// ユーザ情報の構造体を定義
 	var input struct {
 		Username string `json:"username"`
 		Password string `json:"password"`
 		Email    string `json:"email"`
 	}
 
+	// クライアントから送信されてきたjsonをバインド（マッピング）する。
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
+	log.Println(input.Username)
+	log.Println(input.Password)
+	log.Println(input.Email)
+
+	// パスワードのハッシュ化
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Password encryption failed"})
 		return
 	}
 
+	// ユーザデータを格納する構造体を作成, IsActiveはfalseで仮登録状態にする
 	user := models.User{
 		Username: input.Username,
 		Password: string(hashedPassword),
@@ -38,12 +47,13 @@ func Register(c *gin.Context) {
 		IsActive: false,
 	}
 
+	// データベースにuserの情報を登録
 	if err := config.DB.Create(&user).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	// 仮登録用のトークンを生成
+	// 仮登録用のjwtトークンを生成。このトークンをメールで送付して本登録させる。
 	token, err := auth.GenerateJWT(user.Username)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not generate token"})

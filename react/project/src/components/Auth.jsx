@@ -11,7 +11,6 @@ const Auth = () => {
     const [errorMessage, setErrorMessage] = useState('');
 
     const handleRegister = async () => {
-
         try {
             console.log(`try`)
             const response = await axios.post(`${import.meta.env.VITE_APP_API_URL}/api/register`, {
