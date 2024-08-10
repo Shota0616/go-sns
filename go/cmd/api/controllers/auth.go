@@ -10,36 +10,30 @@ import (
 	"github.com/Shota0616/go-sns/models"
 	"github.com/Shota0616/go-sns/auth"
 	"golang.org/x/crypto/bcrypt"
-	"log"
+	"os"
 )
 
-
+// Register handles user registration
 func Register(c *gin.Context) {
-	// ユーザ情報の構造体を定義
+	url := os.Getenv("APP_URL")
+
 	var input struct {
 		Username string `json:"username"`
 		Password string `json:"password"`
 		Email    string `json:"email"`
 	}
 
-	// クライアントから送信されてきたjsonをバインド（マッピング）する。
 	if err := c.ShouldBindJSON(&input); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	log.Println(input.Username)
-	log.Println(input.Password)
-	log.Println(input.Email)
-
-	// パスワードのハッシュ化
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Password encryption failed"})
 		return
 	}
 
-	// ユーザデータを格納する構造体を作成, IsActiveはfalseで仮登録状態にする
 	user := models.User{
 		Username: input.Username,
 		Password: string(hashedPassword),
@@ -47,26 +41,23 @@ func Register(c *gin.Context) {
 		IsActive: false,
 	}
 
-	// データベースにuserの情報を登録
 	if err := config.DB.Create(&user).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	// 仮登録用のjwtトークンを生成。このトークンをメールで送付して本登録させる。
 	token, err := auth.GenerateJWT(user.Username)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not generate token"})
 		return
 	}
 
-	// トークンをRedisに保存
 	config.RDB.Set(context.Background(), user.Email, token, 24*time.Hour)
 
-	// 仮登録メール送信
 	subject := "仮登録のご案内"
 	body := "以下のリンクをクリックして本登録を完了してください。\n" +
-		"http://yourdomain.com/activate?token=" + token + "&email=" + user.Email
+		url + "/auth/activate?token=" + token + "&email=" + user.Email
+
 	if err := auth.SendEmail(user.Email, subject, body); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send email"})
 		return
@@ -75,6 +66,7 @@ func Register(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "User registered. Please check your email to activate your account."})
 }
 
+// Activate handles user activation
 func Activate(c *gin.Context) {
 	var input struct {
 		Email string `json:"email"`
@@ -86,7 +78,6 @@ func Activate(c *gin.Context) {
 		return
 	}
 
-	// Redisからトークンを取得
 	val, err := config.RDB.Get(context.Background(), input.Email).Result()
 	if err == redis.Nil || val != input.Token {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid or expired token"})
@@ -105,12 +96,12 @@ func Activate(c *gin.Context) {
 	user.IsActive = true
 	config.DB.Save(&user)
 
-	// Redisからトークンを削除
 	config.RDB.Del(context.Background(), input.Email)
 
 	c.JSON(http.StatusOK, gin.H{"message": "User activated. You can now log in."})
 }
 
+// Login handles user login
 func Login(c *gin.Context) {
 	var input struct {
 		Username string `json:"username"`
@@ -147,6 +138,7 @@ func Login(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"token": token})
 }
 
+// Logout handles user logout
 func Logout(c *gin.Context) {
 	token := c.GetHeader("Authorization")
 	if token == "" {

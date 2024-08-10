@@ -7,7 +7,7 @@ services:
       - ./react/project:/var/www/vite-project
     environment:
       TZ: ${TZ}
-      REACT_APP_API_URL: ${REACT_APP_API_URL}
+      GO_API_URL: ${GO_API_URL}
     # ホストの3000番ポートに来たものをコンテナの3000番にフォワードする
     ports:
       - "3000:3000"
@@ -32,6 +32,7 @@ services:
       TZ: ${TZ}
       EMAIL_ADDRESS: ${EMAIL_ADDRESS}
       EMAIL_PASSWORD: ${EMAIL_PASSWORD}
+      APP_URL: ${APP_URL}
     # ホストの8080番ポートに来たものをコンテナの8080番にフォワードする
     ports:
       - "8080:8080"

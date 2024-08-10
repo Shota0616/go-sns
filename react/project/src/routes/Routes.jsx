@@ -11,6 +11,7 @@ const RoutesConfig = () => {
             {/* vite, react初期画面 */}
             <Route path="/viteinit" element={<Viteinit />} />
             {/* auth画面 */}
+            <Route path="/auth/activate" element={<Auth />} />
             <Route path="/auth" element={<Auth />} />
             {/* ダッシュボード */}
             <Route path="/logout" element={<Logout />} />

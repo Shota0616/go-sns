@@ -12,6 +12,6 @@ import (
 func Ping(c *gin.Context) {
 	// JSONレスポンスを返す
 	c.JSON(200, gin.H{
-		"message": "Hello World",
+		"message": "Hello World! Pong",
 	})
 }
