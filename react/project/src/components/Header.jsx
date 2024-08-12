@@ -27,7 +27,7 @@ import Divider from '@mui/material/Divider';
 import Avatar from '@mui/material/Avatar';
 
 
-// 検索ボックスのstyleを定義
+// 検索ボックス
 const Search = styled('div')(({ theme }) => ({
     position: 'relative',
     borderRadius: theme.shape.borderRadius,
@@ -130,14 +130,19 @@ function AccountMenu() {
         transformOrigin={{ horizontal: 'right', vertical: 'top' }}
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
         >
-        <Link to="/viteinit">
+        <Link to="/mypage">
             <MenuItem onClick={handleClose}>
                 <Avatar /> Profile
             </MenuItem>
         </Link>
-        <Link to="/auth">
+        <Link to="/auth/register">
             <MenuItem onClick={handleClose}>
                 <Avatar /> Register
+            </MenuItem>
+        </Link>
+        <Link to="/auth/login">
+            <MenuItem onClick={handleClose}>
+                <Avatar /> Login
             </MenuItem>
         </Link>
         <Link to="/logout">
@@ -171,14 +176,14 @@ function AccountMenu() {
 
 
 export default function PrimarySearchAppBar() {
-    // const [anchorEl, setAnchorEl] = React.useState(null);
-    // const [mobileMoreAnchorEl, setMobileMoreAnchorEl] = React.useState(null);
+    const [anchorEl, setAnchorEl] = React.useState(null);
+    const [mobileMoreAnchorEl, setMobileMoreAnchorEl] = React.useState(null);
 
 
 
-    // const handleMobileMenuClose = () => {
-    // setMobileMoreAnchorEl(null);
-    // };
+    const handleMobileMenuClose = () => {
+    setMobileMoreAnchorEl(null);
+    };
 
 
     const mobileMenuId = 'primary-search-account-menu-mobile';

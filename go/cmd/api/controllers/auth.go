@@ -11,6 +11,8 @@ import (
 	"github.com/Shota0616/go-sns/auth"
 	"golang.org/x/crypto/bcrypt"
 	"os"
+	"log"
+	"strconv"
 )
 
 // Register handles user registration
@@ -46,7 +48,7 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	token, err := auth.GenerateJWT(user.Username)
+	token, err := auth.GenerateJWT(user.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not generate token"})
 		return
@@ -104,7 +106,7 @@ func Activate(c *gin.Context) {
 // Login handles user login
 func Login(c *gin.Context) {
 	var input struct {
-		Username string `json:"username"`
+		Email    string `json:"email"`
 		Password string `json:"password"`
 	}
 
@@ -113,8 +115,12 @@ func Login(c *gin.Context) {
 		return
 	}
 
+	// ログ
+	log.Println(input.Email)
+	log.Println(input.Password)
+
 	var user models.User
-	if err := config.DB.Where("username = ?", input.Username).First(&user).Error; err != nil {
+	if err := config.DB.Where("email = ?", input.Email).First(&user).Error; err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not found"})
 		return
 	}
@@ -129,7 +135,8 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	token, err := auth.GenerateJWT(user.Username)
+	log.Println(user.ID)
+	token, err := auth.GenerateJWT(user.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not generate token"})
 		return
@@ -152,7 +159,7 @@ func Logout(c *gin.Context) {
 		return
 	}
 
-	config.RDB.Del(context.Background(), claims.Username)
+	config.RDB.Del(context.Background(), strconv.Itoa(int(claims.ID)))
 
 	c.JSON(http.StatusOK, gin.H{"message": "User logged out"})
 }

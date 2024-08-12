@@ -3,19 +3,20 @@ package auth
 import (
 	"time"
 	"github.com/dgrijalva/jwt-go"
+	"os"
 )
 
-var jwtKey = []byte("your_secret_key")
+var jwtKey = []byte(os.Getenv("JWT_SECRET"))
 
 type Claims struct {
-	Username string `json:"username"`
+	ID uint `json:"id"`
 	jwt.StandardClaims
 }
 
-func GenerateJWT(username string) (string, error) {
+func GenerateJWT(id uint) (string, error) {
 	expirationTime := time.Now().Add(24 * time.Hour)
 	claims := &Claims{
-		Username: username,
+		ID: id,
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: expirationTime.Unix(),
 		},

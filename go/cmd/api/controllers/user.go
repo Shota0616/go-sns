@@ -7,19 +7,37 @@ import (
 	"github.com/Shota0616/go-sns/models"
 	"github.com/Shota0616/go-sns/auth"
 	"golang.org/x/crypto/bcrypt"
-	// "context"
+	"log"
 )
 
 func GetUser(c *gin.Context) {
-	// username := c.Param("username")
+	tokenStr := c.GetHeader("Authorization")
+
+	log.Println(tokenStr)
+
+	if tokenStr == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization token not provided"})
+		return
+	}
+
+	claims, err := auth.ValidateJWT(tokenStr)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+		return
+	}
+
+	userID := claims.ID
+
+	log.Println(claims.ID)
 
 	var user models.User
-	// if err := config.DB.Where("username = ?", username).First(&user).Error; err != nil {
-	// 	c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
-	// 	return
-	// }
+	if err := config.DB.Where("id = ?", userID).First(&user).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
 
 	c.JSON(http.StatusOK, gin.H{
+		"id":       user.ID,
 		"username": user.Username,
 		"email":    user.Email,
 		"active":   user.IsActive,
@@ -28,7 +46,6 @@ func GetUser(c *gin.Context) {
 
 func UpdateUser(c *gin.Context) {
 	var input struct {
-		Username string `json:"username"`
 		Email    string `json:"email"`
 		Password string `json:"password"`
 	}
@@ -38,7 +55,6 @@ func UpdateUser(c *gin.Context) {
 		return
 	}
 
-	// JWTトークンからユーザー情報を取得
 	tokenStr := c.GetHeader("Authorization")
 	if tokenStr == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization token not provided"})
@@ -51,8 +67,10 @@ func UpdateUser(c *gin.Context) {
 		return
 	}
 
+	userID := claims.ID
+
 	var user models.User
-	if err := config.DB.Where("username = ?", claims.Username).First(&user).Error; err != nil {
+	if err := config.DB.Where("id = ?", userID).First(&user).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
@@ -76,7 +94,6 @@ func UpdateUser(c *gin.Context) {
 }
 
 func DeleteUser(c *gin.Context) {
-	// JWTトークンからユーザー情報を取得
 	tokenStr := c.GetHeader("Authorization")
 	if tokenStr == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization token not provided"})
@@ -89,8 +106,10 @@ func DeleteUser(c *gin.Context) {
 		return
 	}
 
+	userID := claims.ID
+
 	var user models.User
-	if err := config.DB.Where("username = ?", claims.Username).First(&user).Error; err != nil {
+	if err := config.DB.Where("id = ?", userID).First(&user).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}

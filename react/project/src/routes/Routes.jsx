@@ -1,22 +1,25 @@
 import { Route, Routes } from 'react-router-dom';
-import Viteinit from '/src/components/Viteinit';
 import Auth from '/src/components/Auth';
 import Logout from '/src/components/Logout';
-
+import MyPage from '/src/components/MyPage'; // インポート
 
 const RoutesConfig = () => {
     return (
-    <>
-        <Routes>
-            {/* vite, react初期画面 */}
-            <Route path="/viteinit" element={<Viteinit />} />
-            {/* auth画面 */}
-            <Route path="/auth/activate" element={<Auth />} />
-            <Route path="/auth" element={<Auth />} />
-            {/* ダッシュボード */}
-            <Route path="/logout" element={<Logout />} />
-        </Routes>
-    </>
+        <>
+            <Routes>
+                {/* auth画面 */}
+                <Route path="/auth/register" element={<Auth />} />
+                <Route path="/auth/login" element={<Auth />} />
+                <Route path="/auth/activate" element={<Auth />} />
+                <Route path="/auth/ping" element={<Auth />} />
+                {/* ログアウト */}
+                <Route path="/logout" element={<Logout />} />
+                {/* マイページ */}
+                <Route path="/mypage" element={<MyPage />} />
+
+                <Route path="/" element={<MyPage />} />
+            </Routes>
+        </>
     );
 };
 
