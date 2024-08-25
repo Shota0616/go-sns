@@ -34,6 +34,7 @@ services:
       EMAIL_PASSWORD: ${EMAIL_PASSWORD}
       APP_URL: ${APP_URL}
       JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET : ${JWT_REFRESH_SECRET}
     # ホストの8080番ポートに来たものをコンテナの8080番にフォワードする
     ports:
       - "8080:8080"

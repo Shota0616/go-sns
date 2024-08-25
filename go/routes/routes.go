@@ -27,7 +27,8 @@ func SetupRouter() *gin.Engine {
 		public.POST("/register", controllers.Register)
 		public.POST("/activate", controllers.Activate)
 		public.POST("/login", controllers.Login)
-		public.POST("/logout", controllers.Logout)
+		// サーバ側でトークンを管理するときは以下を追加
+		// public.POST("/logout", controllers.Logout)
 		public.GET("/ping", controllers.Ping)
 	}
 
