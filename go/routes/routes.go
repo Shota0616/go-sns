@@ -6,6 +6,7 @@ import (
 	"github.com/Shota0616/go-sns/cmd/api/controllers"
 	"github.com/Shota0616/go-sns/middleware" // ミドルウェアのパッケージ
 	"github.com/gin-contrib/cors"
+	"os"
 )
 
 func SetupRouter() *gin.Engine {
@@ -13,7 +14,7 @@ func SetupRouter() *gin.Engine {
 
 	// CORS設定
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"http://localhost:5173"}, // ReactアプリケーションのURLを指定
+		AllowOrigins:     []string{os.Getenv("APP_URL"),"http://localhost:5173/"}, // .envファイルに設定したAPP_URLを使用
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		ExposeHeaders:    []string{"Content-Length"},

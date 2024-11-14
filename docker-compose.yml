@@ -80,6 +80,7 @@ services:
     build: ./mysql
     volumes:
       - ./redis/data:/data
+      - ./mysql/data:/var/lib/mysql
 
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}

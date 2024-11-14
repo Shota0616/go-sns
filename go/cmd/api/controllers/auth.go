@@ -57,14 +57,20 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	refreshToken, err := auth.GenerateRefreshToken(user.ID)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not generate refresh token"})
+	// refreshToken, err := auth.GenerateRefreshToken(user.ID)
+	// if err != nil {
+	// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not generate refresh token"})
+	// 	return
+	// }
+
+	// // トークンとリフレッシュトークンをクライアントに返す
+	// c.JSON(http.StatusOK, gin.H{"token": token, "refresh_token": refreshToken})
+
+	// Redisにアクティベーショントークンを保存
+	if err := config.RDB.Set(context.Background(), user.Email, token, 0).Err(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save token to Redis"})
 		return
 	}
-
-	// トークンとリフレッシュトークンをクライアントに返す
-	c.JSON(http.StatusOK, gin.H{"token": token, "refresh_token": refreshToken})
 
 	// アクティベーションメールを送信
 	subject := "仮登録のご案内"
@@ -107,18 +113,26 @@ func Activate(c *gin.Context) {
 		return
 	}
 
-	// ユーザーをアクティブにする
-	user.IsActive = true
-	config.DB.Save(&user)
+    // ユーザーをアクティブにする
+    user.IsActive = true
+    if err := config.DB.Save(&user).Error; err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to activate user"})
+        return
+    }
 
-	// Redisからトークンを削除
-	config.RDB.Del(context.Background(), input.Email)
+    // Redisからトークンを削除
+    if err := config.RDB.Del(context.Background(), input.Email).Err(); err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete token from Redis"})
+        return
+    }
 
-	c.JSON(http.StatusOK, gin.H{"message": "User activated. You can now log in."})
+    c.JSON(http.StatusOK, gin.H{"message": "User activated successfully"})
 }
 
 // ユーザーのログインを処理する関数
 func Login(c *gin.Context) {
+	url := os.Getenv("APP_URL") // アプリケーションのURLを環境変数から取得
+
 	var input struct {
 		Email    string `json:"email"`    // メールアドレス
 		Password string `json:"password"` // パスワード
@@ -143,11 +157,31 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	// アクティブなユーザーであることを確認
-	if !user.IsActive {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Account is not activated"})
-		return
-	}
+    if !user.IsActive {
+		// アクティベーションされていないユーザの場合はredisからトークンを削除
+		if err := config.RDB.Del(context.Background(), input.Email).Err(); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete token from Redis"})
+			return
+		}
+        // アクティベーションされていないユーザの場合はアクティベーションのメールを再送信
+		token, err := auth.GenerateJWT(user.ID)
+        if err != nil {
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not generate activation token"})
+            return
+        }
+
+		subject := "仮登録のご案内"
+		body := "以下のリンクをクリックして本登録を完了してください。\n" +
+			url + "/auth/activate?token=" + token + "&email=" + user.Email
+
+        if err := auth.SendEmail(user.Email, subject, body); err != nil {
+            c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send email"})
+            return
+        }
+
+        c.JSON(http.StatusUnauthorized, gin.H{"error": "Account is not activated. Activation email has been resent."})
+        return
+    }
 
 	// JWTトークンとリフレッシュトークンを生成
 	token, err := auth.GenerateJWT(user.ID)

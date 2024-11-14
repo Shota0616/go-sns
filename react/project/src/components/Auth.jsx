@@ -32,10 +32,14 @@ const useActivateEffect = (navigate, handleActivate) => {
     const location = useLocation(); // 現在のURLのパスを取得
 
     useEffect(() => {
+        console.log('useActivateEffect triggered'); // ログ出力
         if (location.pathname === '/auth/activate') {
             const params = new URLSearchParams(window.location.search);
             const token = params.get('token'); // URLからトークンを取得
             const email = params.get('email'); // URLからメールアドレスを取得
+
+            console.log('Token:', token); // ログ出力
+            console.log('Email:', email); // ログ出力
 
             if (token && email) {
                 handleActivate(token, email); // トークンとメールが存在する場合、アクティベーション処理を実行
@@ -68,6 +72,8 @@ const handleRegister = async (username, password, email, setMessage) => {
 };
 
 // アクティベーションの処理
+// リンク例:http://localhost:8000/auth/activate?token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiZXhwIjoxNzMxNjc5MTQyfQ.Glc7x6rCnB1rtRcOfNd8ndGU5S-bNk_jjvyfaPl3EfU&email=xxxxx@gmail.com
+// 上記を基にtokenとemailを取得
 const handleActivate = async (token, email, setMessage, navigate) => {
     try {
         const response = await axios.post(`${import.meta.env.VITE_APP_API_URL}/api/activate`, {
