@@ -134,7 +134,7 @@ function AccountMenu({ isLoggedIn }) { // isLoggedInをプロパティとして�
                     [
                         <Link to="/mypage" key="mypage" style={{ textDecoration: 'none', color: 'inherit' }}>
                             <MenuItem onClick={handleClose}>
-                                <Avatar /> Profile
+                                <Avatar /> マイページ
                             </MenuItem>
                         </Link>,
                         <Divider key="divider" />,
@@ -143,7 +143,7 @@ function AccountMenu({ isLoggedIn }) { // isLoggedInをプロパティとして�
                                 <ListItemIcon>
                                     <Settings fontSize="small" />
                                 </ListItemIcon>
-                                Settings
+                                設定
                             </MenuItem>
                         </Link>,
                         <Link to="/logout" key="logout-option" style={{ textDecoration: 'none', color: 'inherit' }}>
@@ -151,20 +151,19 @@ function AccountMenu({ isLoggedIn }) { // isLoggedInをプロパティとして�
                                 <ListItemIcon>
                                     <Logout fontSize="small" />
                                 </ListItemIcon>
-                                Logout
+                                ログアウト
                             </MenuItem>
                         </Link>
                     ]
                                     ) : (
                     // ログインされていない時の処理
                     [
-                        <Divider key="divider" />,
                         <Link to="/auth/register" key="register" style={{ textDecoration: 'none', color: 'inherit' }}>
                             <MenuItem onClick={handleClose}>
                                 <ListItemIcon>
                                     <PersonAdd fontSize="small" />
                                 </ListItemIcon>
-                                Add another account
+                                新規登録
                             </MenuItem>
                         </Link>,
                         <Link to="/auth/login" key="login" style={{ textDecoration: 'none', color: 'inherit' }}>
@@ -172,7 +171,7 @@ function AccountMenu({ isLoggedIn }) { // isLoggedInをプロパティとして�
                                 <ListItemIcon>
                                     <LoginIcon fontSize="small" />
                                 </ListItemIcon>
-                                Login
+                                ログイン
                             </MenuItem>
                         </Link>,
                         <Link to="/settings" key="settings" style={{ textDecoration: 'none', color: 'inherit' }}>
@@ -180,7 +179,7 @@ function AccountMenu({ isLoggedIn }) { // isLoggedInをプロパティとして�
                                 <ListItemIcon>
                                     <Settings fontSize="small" />
                                 </ListItemIcon>
-                                Settings
+                                設定
                             </MenuItem>
                         </Link>,
                     ]

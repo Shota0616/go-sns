@@ -1,6 +1,7 @@
 import React from 'react';
 // import axios from 'axios';
 import { useState, useEffect } from 'react';
+import { Button } from '@mui/material';
 
 
 const Logout = () => {
@@ -27,12 +28,13 @@ const Logout = () => {
 
     return (
         <>
-            <h2>Logout</h2>
             {logoutMessage ? (
                 // logoutMessageが空じゃないときはメッセージ表示
                 <p>{logoutMessage}</p>
             ) : (
-                <button onClick={handleLogout}>Logout</button>
+                <Button onClick={handleLogout} type="submit" variant="contained" color="primary" sx={{ mt: 2, width: '150px', mx: 'auto', display: 'block', height: 50, borderRadius: 3 }}>
+                ログアウト
+                </Button>
             )}
         </>
     );
