@@ -29,6 +29,7 @@ func SetupRouter() *gin.Engine {
 		public.POST("/verify", controllers.Verify)
 		public.POST("/login", controllers.Login)
 		public.POST("/request-password-reset", controllers.RequestPasswordReset) // パスワード再設定リクエストのエンドポイントを追加
+		public.POST("/resend-verification-code", controllers.ResendVerificationCode) // メール認証コード再送のエンドポイントを追加
 		public.POST("/reset-password", controllers.ResetPassword) // パスワード再設定のエンドポイントを追加
 		// サーバ側でトークンを管理するときは以下を追加
 		// public.POST("/logout", controllers.Logout)

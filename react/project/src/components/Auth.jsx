@@ -52,7 +52,7 @@ const handleRegister = async (username, password, email, setMessage, setMessageT
         });
         setMessage(response.data.message);
         setMessageType('success'); // 成功メッセージの種類を設定
-        navigate('/auth/verify'); // 登録成功後にメールの検証画面にリダイレク���
+        navigate('/auth/verify'); // 登録成功後にメールの検証画面にリダイレクト
     } catch (error) {
         if (error.response && error.response.data && error.response.data.error) {
             setMessage(error.response.data.error);
@@ -89,6 +89,24 @@ const handleLogin = async (email, password, setMessage, setMessageType, navigate
             setMessage('ログインに失敗しました');
         }
         setMessageType('error'); // エラーメッセージの種類を設定
+    }
+};
+
+// 認証コードの再送信の処理
+const handleResendVerificationCode = async (email, setMessage, setMessageType) => {
+    try {
+        const response = await axios.post(`${import.meta.env.VITE_APP_API_URL}/api/resend-verification-code`, {
+            email,
+        });
+        setMessage(response.data.message);
+        setMessageType('success'); // 成功メッセージの種類を設定
+    } catch (error) {
+        if (error.response && error.response.data && error.response.data.error) {
+            setMessage(error.response.data.error);
+        }else {
+            setMessage('認証コードの再送に失敗しました');
+        }
+        setMessageType('error');
     }
 };
 
@@ -138,16 +156,35 @@ const Auth = ({ open, handleClose }) => {
 
     // ページ遷移時にメッセージをリセット
     useEffect(() => {
+        // location.stateからmessageを取得し、setMessageで状態を更新。messageがない場合は空文字を設定。
         setMessage(location.state?.message || '');
+        // location.stateからmessageTypeを取得し、setMessageTypeで状態を更新。messageTypeがない場合は空文字を設定。
         setMessageType(location.state?.messageType || ''); // メッセージの種類をリセット
+    // location.pathnameまたはlocation.stateが変更されるたびにこのuseEffectが実行される。
     }, [location.pathname, location.state]);
 
     useEffect(() => {
+        // location.searchからクエリパラメータを取得し、URLSearchParamsオブジェクトを作成。
         const params = new URLSearchParams(location.search);
+        // クエリパラメータから'token'を取得。
         const token = params.get('token');
+        // tokenが存在する場合、setTokenで状態を更新。
         if (token) {
             setToken(token);
         }
+    // location.searchが変更されるたびにこのuseEffectが実行される。
+    }, [location.search]);
+
+    useEffect(() => {
+        // location.searchからクエリパラメータを取得し、URLSearchParamsオブジェクトを作成。
+        const params = new URLSearchParams(location.search);
+        // クエリパラメータから'email'を取得。
+        const emailParam = params.get('email');
+        // emailParamが存在する場合、setEmailで状態を更新。
+        if (emailParam) {
+            setEmail(emailParam);
+        }
+    // location.searchが変更されるたびにこのuseEffectが実行される。
     }, [location.search]);
 
     const renderRegister = () => (
@@ -274,6 +311,10 @@ const Auth = ({ open, handleClose }) => {
             <p>メールに送信した認証コードを入力してください</p>
             <Button type="submit" variant="contained" color="primary" sx={{ mt: 2, width: '50%', mx: 'auto', display: 'block', height: 50, borderRadius: 3 }}>
                 認証
+            </Button>
+            {/* 認証コードの再送信ボタン */}
+            <Button onClick={() => handleResendVerificationCode(email, setMessage, setMessageType)} variant="contained" color="secondary" sx={{ mt: 2, width: '50%', mx: 'auto', display: 'block', height: 50, borderRadius: 3 }}>
+                認証コードの再送信
             </Button>
         </Box>
     );

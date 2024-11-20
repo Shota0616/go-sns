@@ -72,12 +72,12 @@ func Register(c *gin.Context) {
 	}
 
     // 認証コードをメールで送信
-    // subject := "Your Verification Code"
-    // body := fmt.Sprintf("Your verification code is: %s", verificationCode)
-    // if err := auth.SendEmail(user.Email, subject, body); err != nil {
-    //     c.JSON(http.StatusInternalServerError, gin.H{"error": "メールの送信に失敗しました"})
-    //     return
-    // }
+    subject := "Your Verification Code"
+    body := fmt.Sprintf("Your verification code is: %s", verificationCode)
+    if err := auth.SendEmail(user.Email, subject, body); err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "メールの送信に失敗しました"})
+        return
+    }
 
     c.JSON(http.StatusOK, gin.H{"message": "ユーザー登録に成功しました。メールで認証コードを確認してください。"})
 }
@@ -129,12 +129,12 @@ func Login(c *gin.Context) {
 		}
 
 		// 認証コードをメールで送信
-		// subject := "Your Verification Code"
-		// body := fmt.Sprintf("Your verification code is: %s", verificationCode)
-		// if err := auth.SendEmail(user.Email, subject, body); err != nil {
-		// 	c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send email"})
-		// 	return
-		// }
+		subject := "Your Verification Code"
+		body := fmt.Sprintf("Your verification code is: %s", verificationCode)
+		if err := auth.SendEmail(user.Email, subject, body); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send email"})
+			return
+		}
 
         // 認証コードの入力画面にリダイレクトする。
         c.JSON(http.StatusSeeOther, gin.H{"error": "アカウントが有効化されていません。認証メールを再送しました。"})
@@ -232,7 +232,75 @@ func Verify(c *gin.Context) {
 		return
 	}
 
+	// もし再送回数のキーが存在していたら削除
+	resendKey := fmt.Sprintf("resend_count_%s", input.Email)
+	if err := config.RDB.Del(context.Background(), resendKey).Err(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete resend count from Redis"})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{"message": "メールアドレスが認証されました"})
+}
+
+// 認証コードの再送を処理する関数
+func ResendVerificationCode(c *gin.Context) {
+    var input struct {
+        Email string `json:"email"`
+    }
+    if err := c.ShouldBindJSON(&input); err != nil {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "入力データが不正です"})
+        return
+    }
+
+    // 再送回数のチェック
+    resendKey := fmt.Sprintf("resend_count_%s", input.Email)
+    resendCount, err := config.RDB.Get(context.Background(), resendKey).Int()
+    if err != nil && err != redis.Nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check resend count"})
+        return
+    }
+
+    if resendCount >= 3 {
+        c.JSON(http.StatusTooManyRequests, gin.H{"error": "再送回数の上限に達しました。12時間後に再試行してください。"})
+        return
+    }
+
+    // 4桁の認証コードを生成
+    rand.Seed(time.Now().UnixNano())
+    verificationCode := fmt.Sprintf("%04d", rand.Intn(10000))
+
+	// redisに保存されている認証コードを削除
+	if err := config.RDB.Del(context.Background(), input.Email).Err(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete verification code from Redis"})
+		return
+	}
+
+    // Redisに認証コードを保存
+    if err := config.RDB.Set(context.Background(), input.Email, verificationCode, 10*time.Minute).Err(); err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save verification code to Redis"})
+        return
+    }
+
+    // 再送回数をインクリメント
+    if err := config.RDB.Incr(context.Background(), resendKey).Err(); err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to increment resend count"})
+        return
+    }
+    // 再送回数の有効期限を12時間に設定
+    if err := config.RDB.Expire(context.Background(), resendKey, 12*time.Hour).Err(); err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to set resend count expiration"})
+        return
+    }
+
+    // 認証コードをメールで送信
+    subject := "Your Verification Code"
+    body := fmt.Sprintf("Your verification code is: %s", verificationCode)
+    if err := auth.SendEmail(input.Email, subject, body); err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send email"})
+        return
+    }
+
+    c.JSON(http.StatusOK, gin.H{"message": "認証コードを再送しました。メールを確認してください。"})
 }
 
 
