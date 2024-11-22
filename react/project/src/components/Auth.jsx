@@ -1,18 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
-import { Box, Button, TextField, Typography, Paper } from '@mui/material';
+import { Box, Button, TextField, Typography, Paper, IconButton, InputAdornment } from '@mui/material';
+import { useTranslation } from 'react-i18next';
+import { Visibility, VisibilityOff } from '@mui/icons-material';
 
+// 認証状態を管理するカスタムフック
 const useAuthState = () => {
+    // ユーザー名の状態を管理
     const [username, setUsername] = useState('');
+    // パスワードの状態を管理
     const [password, setPassword] = useState('');
+    // メールアドレスの状態を管理
     const [email, setEmail] = useState('');
+    // メッセージの状態を管理（エラーメッセージや成功メッセージ）
     const [message, setMessage] = useState('');
+    // メッセージの種類を管理（エラーか成功か）
     const [messageType, setMessageType] = useState('');
+    // 認証コードの状態を管理
     const [verificationCode, setVerificationCode] = useState('');
+    // 新しいパスワードの状態を管理
     const [newPassword, setNewPassword] = useState('');
+    // トークンの状態を管理
     const [token, setToken] = useState('');
 
+    // 状態とその更新関数を返す
     return {
         username,
         setUsername,
@@ -33,126 +45,21 @@ const useAuthState = () => {
     };
 };
 
-// 新規登録の処理
-const handleRegister = async (username, password, email, setMessage, setMessageType, navigate) => {
-    if (!username || !password || !email) {
-        let missingFields = [];
-        if (!username) missingFields.push('ユーザー名');
-        if (!password) missingFields.push('パスワード');
-        if (!email) missingFields.push('メールアドレス');
-        setMessage(`${missingFields.join('、')}の入力必須です`);
-        setMessageType('error'); // エラーメッセージの種類を設定
-        return;
-    }
-    try {
-        const response = await axios.post(`${import.meta.env.VITE_APP_API_URL}/api/register`, {
-            username,
-            password,
-            email,
-        });
-        setMessage(response.data.message);
-        setMessageType('success'); // 成功メッセージの種類を設定
-        navigate('/auth/verify'); // 登録成功後にメールの検証画面にリダイレクト
-    } catch (error) {
-        if (error.response && error.response.data && error.response.data.error) {
-            setMessage(error.response.data.error);
-        } else {
-            setMessage('登録に失敗しました');
-        }
-        setMessageType('error'); // エラーメッセージの種類を設定
-    }
-};
-
-// ログインの処理
-const handleLogin = async (email, password, setMessage, setMessageType, navigate) => {
-    try {
-        const response = await axios.post(`${import.meta.env.VITE_APP_API_URL}/api/login`, {
-            email,
-            password,
-        });
-
-        localStorage.setItem('token', response.data.token); // アクセストークンをlocalStorageに保存
-        localStorage.setItem('refrestoken', response.data.refreshtoken); // リフレッシュトークンも保存
-        window.dispatchEvent(new Event("storage")); // storageイベントを発火
-        setMessage('Login successful!'); // 成功メッセージを設定
-
-
-        setMessage('ログインに成功しました');
-        setMessageType('success'); // 成功メッセージの種類を設定
-
-    } catch (error) {
-        // エラーレスポンスの処理
-
-        if (error.response.status === 303) {
-            navigate("/auth/verify", { state: { error: error.response.data.message } });
-        } else {
-            setMessage('ログインに失敗しました');
-        }
-        setMessageType('error'); // エラーメッセージの種類を設定
-    }
-};
-
-// 認証コードの再送信の処理
-const handleResendVerificationCode = async (email, setMessage, setMessageType) => {
-    try {
-        const response = await axios.post(`${import.meta.env.VITE_APP_API_URL}/api/resend-verification-code`, {
-            email,
-        });
-        setMessage(response.data.message);
-        setMessageType('success'); // 成功メッセージの種類を設定
-    } catch (error) {
-        if (error.response && error.response.data && error.response.data.error) {
-            setMessage(error.response.data.error);
-        }else {
-            setMessage('認証コードの再送に失敗しました');
-        }
-        setMessageType('error');
-    }
-};
-
-// 認証コードの処理
-const handleVerify = async (email, verificationCode, setMessage, setMessageType, navigate) => {
-    try {
-        const response = await axios.post(`${import.meta.env.VITE_APP_API_URL}/api/verify`, {
-            email,
-            verificationCode,
-        });
-        setMessage(response.data.message);
-        setMessageType('success'); // 成功メッセージの種類を設定
-        navigate('/auth/login'); // 認証成功後にログイン画面にリダイレクト
-    } catch (error) {
-        if (error.response && error.response.data && error.response.data.error) {
-            setMessage(error.response.data.error);
-        } else {
-            setMessage('認証に失敗しました');
-        }
-        setMessageType('error'); // エラーメッセージの種類を設定
-    }
-};
-
-const handleResetPassword = async (token, newPassword, setMessage, setMessageType, navigate) => {
-    try {
-        const response = await axios.post(`${import.meta.env.VITE_APP_API_URL}/api/reset-password`, {
-            token,
-            newPassword,
-        });
-        setMessage(response.data.message);
-        setMessageType('success');
-        navigate('/auth/login');
-    } catch (error) {
-        if (error.response && error.response.data && error.response.data.error) {
-            setMessage(error.response.data.error);
-        } else {
-            setMessage('パスワード再設定に失敗しました');
-        }
-        setMessageType('error');
-    }
-};
 
 const Auth = ({ open, handleClose }) => {
     const { username, setUsername, password, setPassword, email, setEmail, message, setMessage, messageType, setMessageType, verificationCode, setVerificationCode, newPassword, setNewPassword, token, setToken } = useAuthState();
     const location = useLocation();
     const navigate = useNavigate();
+    const { t } = useTranslation();
+    const [showPassword, setShowPassword] = useState(false);
+    const [emailError, setEmailError] = useState(false);
+    const [passwordError, setPasswordError] = useState(false);
+    const [usernameError, setUsernameError] = useState(false);
+    const [verificationCodeError, setVerificationCodeError] = useState(false);
+    const [newPasswordError, setNewPasswordError] = useState(false);
+
+    const handleClickShowPassword = () => setShowPassword(!showPassword);
+    const handleMouseDownPassword = (event) => event.preventDefault();
 
     // ページ遷移時にメッセージをリセット
     useEffect(() => {
@@ -175,151 +82,147 @@ const Auth = ({ open, handleClose }) => {
     // location.searchが変更されるたびにこのuseEffectが実行される。
     }, [location.search]);
 
+    // useEffect(() => {
+    //     // location.searchからクエリパラメータを取得し、URLSearchParamsオブジェクトを作成。
+    //     const params = new URLSearchParams(location.search);
+    //     // クエリパラメータから'email'を取得。
+    //     const emailParam = params.get('email');
+    //     // emailParamが存在する場合、setEmailで状態を更新。
+    //     if (emailParam) {
+    //         setEmail(emailParam);
+    //     }
+    // // location.searchが変更されるたびにこのuseEffectが実行される。
+    // }, [location.search]);
+
+    // ページ遷移時にエラーメッセージをリセット
     useEffect(() => {
-        // location.searchからクエリパラメータを取得し、URLSearchParamsオブジェクトを作成。
-        const params = new URLSearchParams(location.search);
-        // クエリパラメータから'email'を取得。
-        const emailParam = params.get('email');
-        // emailParamが存在する場合、setEmailで状態を更新。
-        if (emailParam) {
-            setEmail(emailParam);
+        setEmailError(false);
+        setPasswordError(false);
+        setUsernameError(false);
+        setVerificationCodeError(false);
+        setNewPasswordError(false);
+    }, [location.pathname]);
+
+    //////////////////////////////////////////
+    ///////////// 各種処理の関数 ///////////////
+    //////////////////////////////////////////
+
+    // 新規登録の処理
+    const handleRegister = async (username, password, email, setMessage, setMessageType, navigate) => {
+        // ユーザー名、パスワード、メールアドレスのいずれかが空の場合、エラーメッセージを設定して処理を終了
+        if (!username || !password || !email) {
+            setUsernameError(!username);
+            setEmailError(!email);
+            setPasswordError(!password);
+            return;
         }
-    // location.searchが変更されるたびにこのuseEffectが実行される。
-    }, [location.search]);
 
-    const renderRegister = () => (
-        <Box component="form" onSubmit={(e) => { e.preventDefault(); handleRegister(username, password, email, setMessage, setMessageType, navigate); }} sx={{ mt: 2 }}>
-            <TextField
-                label="ユーザー名"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                fullWidth
-                margin="normal"
-                InputProps={{
-                    style: {
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                        color: 'white',
-                    },
-                }}
-                InputLabelProps={{
-                    style: { color: 'white' },
-                }}
-            />
-            <TextField
-                label="メールアドレス"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                fullWidth
-                margin="normal"
-                InputProps={{
-                    style: {
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                        color: 'white',
-                    },
-                }}
-                InputLabelProps={{
-                    style: { color: 'white' },
-                }}
-            />
-            <TextField
-                label="パスワード"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                fullWidth
-                margin="normal"
-                InputProps={{
-                    style: {
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                        color: 'white',
-                    },
-                }}
-                InputLabelProps={{
-                    style: { color: 'white' },
-                }}
-            />
-            <Button type="submit" variant="contained" color="primary" sx={{ mt: 2, width: '50%', mx: 'auto', display: 'block', height: 50, borderRadius: 3 }}>
-                新規登録
-            </Button>
-        </Box>
-    );
+        // ユーザー名、パスワード、メールアドレスをサーバーに送信して新規登録
+        try {
+            const response = await axios.post(`${import.meta.env.VITE_APP_API_URL}/api/register`, {
+                username,
+                password,
+                email,
+            });
+            setMessage(response.data.message);
+            setMessageType('success'); // 成功メッセージの種類を設定
+            navigate('/auth/verify'); // 登録成功後にメールの検証画面にリダイレクト
+        } catch (error) {
+            // エラーレスポンスの処理
+            console.log(error.response.data.error);
+            if (error) {
+                setMessage(error.response.data.error);
+            } else {
+                setMessage(t('registration_failed'));
+            }
+            setMessageType('error'); // エラーメッセージの種類を設定
+        }
+    };
 
-    const renderLogin = () => (
-        <Box component="form" onSubmit={(e) => { e.preventDefault(); handleLogin(email, password, setMessage, setMessageType, navigate); }} sx={{ mt: 2 }}>
-            <TextField
-                label="メールアドレス"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                fullWidth
-                margin="normal"
-                InputProps={{
-                    style: {
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                        color: 'white',
-                    },
-                }}
-                InputLabelProps={{
-                    style: { color: 'white' },
-                }}
-            />
-            <TextField
-                label="パスワード"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                fullWidth
-                margin="normal"
-                InputProps={{
-                    style: {
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                        color: 'white',
-                    },
-                }}
-                InputLabelProps={{
-                    style: { color: 'white' },
-                }}
-            />
-            <Button type="submit" variant="contained" color="primary" sx={{ mt: 2, width: '50%', mx: 'auto', display: 'block', height: 50, borderRadius: 3 }}>
-                ログイン
-            </Button>
-            <Typography variant="body2" sx={{ mt: 2, textAlign: 'center' }}>
-                <Link to="/auth/request-password-reset" style={{ color: '#1976d2', textDecoration: 'none' }}>
-                    パスワードをお忘れですか？
-                </Link>
-            </Typography>
-        </Box>
-    );
+    // ログインの処理
+    const handleLogin = async (email, password, setMessage, setMessageType, navigate) => {
+        // メールアドレス、パスワードのいずれかが空の場合、エラーメッセージを設定して処理を終了
+        if (!email || !password) {
+            setEmailError(!email);
+            setPasswordError(!password);
+            return;
+        }
 
-    const renderVerify = () => (
-        <Box component="form" onSubmit={(e) => { e.preventDefault(); handleVerify(email, verificationCode, setMessage, setMessageType, navigate); }} sx={{ mt: 2 }}>
-            <TextField
-                label="認証コード"
-                value={verificationCode}
-                onChange={(e) => setVerificationCode(e.target.value)}
-                fullWidth
-                margin="normal"
-                InputProps={{
-                    style: {
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                        color: 'white',
-                    },
-                }}
-                InputLabelProps={{
-                    style: { color: 'white' },
-                }}
-            />
-            <p>メールに送信した認証コードを入力してください</p>
-            <Button type="submit" variant="contained" color="primary" sx={{ mt: 2, width: '50%', mx: 'auto', display: 'block', height: 50, borderRadius: 3 }}>
-                認証
-            </Button>
-            {/* 認証コードの再送信ボタン */}
-            <Button onClick={() => handleResendVerificationCode(email, setMessage, setMessageType)} variant="contained" color="secondary" sx={{ mt: 2, width: '50%', mx: 'auto', display: 'block', height: 50, borderRadius: 3 }}>
-                認証コードの再送信
-            </Button>
-        </Box>
-    );
+        try {
+            const response = await axios.post(`${import.meta.env.VITE_APP_API_URL}/api/login`, {
+                email,
+                password,
+            });
+
+            localStorage.setItem('token', response.data.token); // アクセストークンをlocalStorageに保存
+            localStorage.setItem('refrestoken', response.data.refreshtoken); // リフレッシュトークンも保存
+            window.dispatchEvent(new Event("storage")); // storageイベントを発火
+            setMessage(t('login_successful')); // 成功メッセージを設定
+            setMessageType('success'); // 成功メッセージの種類を設定
+
+        } catch (error) {
+            // エラーレスポンスの処理
+
+            if (error.response.status === 303) {
+                navigate("/auth/verify", { state: { error: error.response.data.message } });
+            } else {
+                setMessage(t('login_failed'));
+            }
+            setMessageType('error'); // エラーメッセージの種類を設定
+        }
+    };
+
+    // 認証コードの処理
+    const handleVerify = async (email, verificationCode, setMessage, setMessageType, navigate) => {
+        // 認証コードが空の場合、エラーメッセージを設定して処理を終了
+        if (!verificationCode) {
+            setVerificationCodeError(!verificationCode);
+            return;
+        }
+
+        try {
+            const response = await axios.post(`${import.meta.env.VITE_APP_API_URL}/api/verify`, {
+                email,
+                verificationCode,
+            });
+            setMessage(response.data.message);
+            setMessageType('success'); // 成功メッセージの種類を設定
+            navigate('/auth/login'); // 認証成功後にログイン画面にリダイレクト
+        } catch (error) {
+            if (error.response && error.response.data && error.response.data.error) {
+                setMessage(error.response.data.error);
+            } else {
+                setMessage(t('verification_failed'));
+            }
+            setMessageType('error'); // エラーメッセージの種類を設定
+        }
+    };
+
+    // 認証コードの再送信の処理
+    const handleResendVerificationCode = async (email, setMessage, setMessageType) => {
+        // メールアドレスが空の場合、エラーメッセージを設定して処理を終了
+        try {
+            const response = await axios.post(`${import.meta.env.VITE_APP_API_URL}/api/resend-verification-code`, {
+                email,
+            });
+            setMessage(response.data.message);
+            setMessageType('success'); // 成功メッセージの種類を設定
+        } catch (error) {
+            if (error.response && error.response.data && error.response.data.error) {
+                setMessage(error.response.data.error);
+            }else {
+                setMessage(t('resend_verification_code_failed'));
+            }
+            setMessageType('error');
+        }
+    };
 
     const handleRequestPasswordReset = async (email, setMessage, setMessageType) => {
+        // メールアドレスが空の場合、エラーメッセージを設定して処理を終了
+        if (!email) {
+            setEmailError(!email);
+            return;
+        }
         try {
             const response = await axios.post(`${import.meta.env.VITE_APP_API_URL}/api/request-password-reset`, {
                 email,
@@ -330,61 +233,289 @@ const Auth = ({ open, handleClose }) => {
             if (error.response && error.response.data && error.response.data.error) {
                 setMessage(error.response.data.error);
             } else {
-                setMessage('パスワードリセットリクエストに失敗しました');
+                setMessage(t('request_password_reset_failed'));
+            }
+            setMessageType('error');
+        }
+    };
+
+    const handleResetPassword = async (token, newPassword, setMessage, setMessageType, navigate) => {
+        // 新しいパスワードが空の場合、エラーメッセージを設定して処理を終了
+        if (!newPassword) {
+            setNewPasswordError(!newPassword);
+            return;
+        }
+        try {
+            const response = await axios.post(`${import.meta.env.VITE_APP_API_URL}/api/reset-password`, {
+                token,
+                newPassword,
+            });
+            setMessage(response.data.message);
+            setMessageType('success');
+            navigate('/auth/login');
+        } catch (error) {
+            if (error.response && error.response.data && error.response.data.error) {
+                setMessage(error.response.data.error);
+            } else {
+                setMessage(t('reset_password_failed'));
             }
             setMessageType('error');
         }
     };
 
 
-    const renderRequestPasswordReset = () => (
-        <Box component="form" onSubmit={(e) => { e.preventDefault(); handleRequestPasswordReset(email, setMessage, setMessageType); }} sx={{ mt: 2 }}>
+
+    //////////////////////////////////////////
+    ///////////// 各種render処理 ///////////////
+    //////////////////////////////////////////
+
+
+
+    const renderRegister = () => {
+        return (
+            // <Box component="form" onSubmit={(e) => { e.preventDefault(); handleRegister(username, password, email, setMessage, setMessageType, navigate) }} sx={{ mt: 2 }}>
+            <Box component="form" onSubmit={(e) => { e.preventDefault(); handleRegister(username, password, email) }} sx={{ mt: 2 }}>
+
+                <TextField
+                    label={t('username')}
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    fullWidth
+                    margin="normal"
+                    error={usernameError}
+                    helperText={usernameError ? `${t('username')}${t('input_required')}` : ''}
+                    InputProps={{
+                        style: {
+                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                            color: 'white',
+                        },
+                    }}
+                    InputLabelProps={{
+                        style: { color: 'white' },
+                    }}
+                />
+                <TextField
+                    label={t('email')}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    fullWidth
+                    margin="normal"
+                    error={emailError}
+                    helperText={emailError ? `${t('email')}${t('input_required')}` : ''}
+                    InputProps={{
+                        style: {
+                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                            color: 'white',
+                        },
+                    }}
+                    InputLabelProps={{
+                        style: { color: 'white' },
+                    }}
+                />
+                <TextField
+                    label={t('password')}
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    fullWidth
+                    margin="normal"
+                    error={passwordError}
+                    helperText={passwordError ? `${t('password')}${t('input_required')}` : ''}
+                    InputProps={{
+                        endAdornment: (
+                            <InputAdornment position="end">
+                                <IconButton
+                                    aria-label="toggle password visibility"
+                                    onClick={handleClickShowPassword}
+                                    onMouseDown={handleMouseDownPassword}
+                                    edge="end"
+                                >
+                                    {showPassword ? <VisibilityOff /> : <Visibility />}
+                                </IconButton>
+                            </InputAdornment>
+                        ),
+                        style: {
+                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                            color: 'white',
+                        },                    }}
+                    InputLabelProps={{
+                        style: { color: 'white' },
+                    }}
+                />
+                <Button type="submit" variant="contained" color="primary" sx={{ mt: 2, width: '50%', mx: 'auto', display: 'block', height: 50, borderRadius: 3 }}>
+                    {t('register')}
+                </Button>
+            </Box>
+        );
+    };
+
+    const renderLogin = () => {
+        return (
+            <Box component="form" onSubmit={(e) => {e.preventDefault(); handleLogin(password, email)} } sx={{ mt: 2 }}>
+                <TextField
+                    label={t('email')}
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    fullWidth
+                    margin="normal"
+                    error={emailError}
+                    helperText={emailError ? `${t('email')}${t('input_required')}` : ''}
+                    InputProps={{
+                        style: {
+                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                            color: 'white',
+                        },
+                    }}
+                    InputLabelProps={{
+                        style: { color: 'white' },
+                    }}
+                />
+                <TextField
+                    label={t('password')}
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    fullWidth
+                    margin="normal"
+                    error={passwordError}
+                    helperText={passwordError ? `${t('password')}${t('input_required')}` : ''}
+                    InputProps={{
+                        endAdornment: (
+                            <InputAdornment position="end">
+                                <IconButton
+                                    aria-label="toggle password visibility"
+                                    onClick={handleClickShowPassword}
+                                    onMouseDown={handleMouseDownPassword}
+                                    edge="end"
+                                >
+                                    {showPassword ? <VisibilityOff /> : <Visibility />}
+                                </IconButton>
+                            </InputAdornment>
+                        ),
+                        style: {
+                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                            color: 'white',
+                        },
+                    }}
+                    InputLabelProps={{
+                        style: { color: 'white' },
+                    }}
+                />
+                <Button type="submit" variant="contained" color="primary" sx={{ mt: 2, width: '50%', mx: 'auto', display: 'block', height: 50, borderRadius: 3 }}>
+                    {t('login')}
+                </Button>
+                <Typography variant="body2" sx={{ mt: 2, textAlign: 'center' }}>
+                    <Link to="/auth/request-password-reset" style={{ color: '#1976d2', textDecoration: 'none' }}>
+                        {t('forgot_password')}
+                    </Link>
+                </Typography>
+            </Box>
+        );
+    };
+
+    const renderVerify = () => {
+        return (
+            <Box component="form" onSubmit={(e) => {e.preventDefault(); handleVerify(email, verificationCode)}} sx={{ mt: 2 }}>
+                <TextField
+                    label={t('verification_code')}
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value)}
+                    fullWidth
+                    margin="normal"
+                    error={verificationCodeError}
+                    helperText={verificationCodeError ? `${t('verification_code')}${t('input_required')}` : ''}
+                    InputProps={{
+                        style: {
+                            backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                            color: 'white',
+                        },
+                    }}
+                    InputLabelProps={{
+                        style: { color: 'white' },
+                    }}
+                />
+                <Typography variant="body2" sx={{ mt: 2 }}>
+                    {t('enter_verification_code')}
+                </Typography>
+                <Button type="submit" variant="contained" color="primary" sx={{ mt: 2, width: '50%', mx: 'auto', display: 'block', height: 50, borderRadius: 3 }}>
+                    {t('verify')}
+                </Button>
+                {/* 認証コードの再送信ボタン */}
+                <Button onClick={() => handleResendVerificationCode(email, setMessage, setMessageType)} variant="contained" color="secondary" sx={{ mt: 2, width: '50%', mx: 'auto', display: 'block', height: 50, borderRadius: 3 }}>
+                    {t('resend_verification_code')}
+                </Button>
+            </Box>
+        );
+    };
+
+    const renderRequestPasswordReset = () => {
+        return (
+            <Box component="form" onSubmit={(e) => { e.preventDefault(); handleRequestPasswordReset(email, setMessage, setMessageType); }} sx={{ mt: 2 }}>
             <TextField
-                label="メールアドレス"
+                label={t('email')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 fullWidth
                 margin="normal"
+                error={emailError}
+                helperText={emailError ? `${t('email')}${t('input_required')}` : ''}
                 InputProps={{
-                    style: {
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                        color: 'white',
-                    },
+                style: {
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    color: 'white',
+                },
                 }}
                 InputLabelProps={{
                     style: { color: 'white' },
                 }}
             />
             <Button type="submit" variant="contained" color="primary" sx={{ mt: 2, width: '50%', mx: 'auto', display: 'block', height: 50, borderRadius: 3 }}>
-                送信
+                {t('send')}
             </Button>
-        </Box>
-    );
+            </Box>
+        );
+    };
 
-    const renderResetPassword = () => (
-        <Box component="form" onSubmit={(e) => { e.preventDefault(); handleResetPassword(token, newPassword, setMessage, setMessageType, navigate); }} sx={{ mt: 2 }}>
+    const renderResetPassword = () => {
+        return (
+            <Box component="form" onSubmit={(e) => { e.preventDefault(); handleResetPassword(token, newPassword, setMessage, setMessageType, navigate); }} sx={{ mt: 2 }}>
             <TextField
-                label="新しいパスワード"
-                type="password"
+                label={t('new_password')}
+                type={showPassword ? 'text' : 'password'}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 fullWidth
                 margin="normal"
+                error={newPasswordError}
+                helperText={newPasswordError ? `${t('new_password')}${t('input_required')}` : ''}
                 InputProps={{
-                    style: {
-                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                        color: 'white',
-                    },
+                endAdornment: (
+                    <InputAdornment position="end">
+                    <IconButton
+                        aria-label="toggle password visibility"
+                        onClick={handleClickShowPassword}
+                        onMouseDown={handleMouseDownPassword}
+                        edge="end"
+                    >
+                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                    </InputAdornment>
+                ),
+                style: {
+                    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                    color: 'white',
+                },
                 }}
                 InputLabelProps={{
-                    style: { color: 'white' },
+                style: { color: 'white' },
                 }}
             />
             <Button type="submit" variant="contained" color="primary" sx={{ mt: 2, width: '50%', mx: 'auto', display: 'block', height: 50, borderRadius: 3 }}>
-                パスワード再設定
+                {t('reset_password')}
             </Button>
-        </Box>
-    );
+            </Box>
+        );
+    };
 
     const renderContent = () => {
         switch (location.pathname) {
@@ -406,22 +537,22 @@ const Auth = ({ open, handleClose }) => {
     const getTitle = () => {
         switch (location.pathname) {
             case '/auth/register':
-                return '新規登録';
+                return t('register');
             case '/auth/login':
-                return 'ログイン';
+                return t('login');
             case '/auth/verify':
-                return '認証コード入力';
+                return t('enter_verification_code');
             case '/auth/request-password-reset':
-                return 'パスワード再設定メール送信';
+                return t('send_password_reset_email');
             case '/auth/reset-password':
-                return 'パスワード再設定';
+                return t('reset_password');
             default:
                 return '';
         }
     };
 
     return (
-        <Paper elevation={3} sx={{ p: 4, maxWidth: 400, mx: 'auto', mt: 4, bgcolor: 'grey.800', color: 'white', borderRadius: 5, boxShadow: 10}}>
+        <Paper elevation={3} sx={{ p: 4, maxWidth: 400, mx: 'auto', mt: 4, bgcolor: 'grey.800', color: 'white', borderRadius: 5, boxShadow: 10 }}>
             <Typography variant="h5" component="h1" gutterBottom>
                 {getTitle()}
             </Typography>

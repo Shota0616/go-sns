@@ -6,10 +6,12 @@ services:
       context: ./react
     volumes:
       - ./react/project:/var/www/vite-project
+      - ./locales:/var/www/locales
     environment:
       TZ: ${TZ}
       GO_API_URL: ${GO_API_URL}
-      NODE_ENV: ${ENV_MODE}  # NODE_ENVを追加
+      NODE_ENV: ${ENV_MODE}
+      APP_LANG: ${APP_LANG}
     ports:
       - "3000:3000"
       - "5173:5173"
@@ -26,6 +28,7 @@ services:
       context: ./go
     volumes:
       - ./go:/usr/src/app
+      - ./locales:/usr/src/locales
     environment:
       TZ: ${TZ}
       EMAIL_ADDRESS: ${EMAIL_ADDRESS}
@@ -33,7 +36,8 @@ services:
       APP_URL: ${APP_URL}
       JWT_SECRET: ${JWT_SECRET}
       JWT_REFRESH_SECRET : ${JWT_REFRESH_SECRET}
-      NODE_ENV: ${ENV_MODE}  # NODE_ENVを追加
+      NODE_ENV: ${ENV_MODE}
+      APP_LANG: ${APP_LANG}
     ports:
       - "8080:8080"
     expose:

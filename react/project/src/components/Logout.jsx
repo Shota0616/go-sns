@@ -1,10 +1,10 @@
 import React from 'react';
-// import axios from 'axios';
 import { useState, useEffect } from 'react';
 import { Button } from '@mui/material';
-
+import { useTranslation } from 'react-i18next';
 
 const Logout = () => {
+    const { t } = useTranslation();
     const [logoutMessage, setLogoutMessage] = useState(''); // 初期値を空文字に
 
     const handleLogout = async () => {
@@ -20,9 +20,9 @@ const Logout = () => {
             //     'Authorization': token,
             //     },
             // });
-            setLogoutMessage('Logout successful!');
+            setLogoutMessage(t('logout_successful'));
         } catch (error) {
-            setLogoutMessage('Logout failed!');
+            setLogoutMessage(t('logout_failed'));
         }
     };
 
@@ -33,7 +33,7 @@ const Logout = () => {
                 <p>{logoutMessage}</p>
             ) : (
                 <Button onClick={handleLogout} type="submit" variant="contained" color="primary" sx={{ mt: 2, width: '150px', mx: 'auto', display: 'block', height: 50, borderRadius: 3 }}>
-                ログアウト
+                    {t('logout')}
                 </Button>
             )}
         </>
