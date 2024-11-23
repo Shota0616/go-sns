@@ -231,12 +231,7 @@ export default function PrimarySearchAppBar() {
                         />
                     </Search>
                     <Box sx={{ flexGrow: 1 }} />
-                    <Box sx={{ display: { xs: 'none', md: 'flex' } }}>
-                        <IconButton size="large" aria-label={t('show_new_mails')} color="inherit">
-                            <Badge badgeContent={4} color="error">
-                                <MailIcon />
-                            </Badge>
-                        </IconButton>
+                    <Box sx={{ display: { xs: 'flex', md: 'flex' } }}>
                         <IconButton
                             size="large"
                             aria-label={t('show_new_notifications')}

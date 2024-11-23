@@ -11,7 +11,7 @@
     "failed_to_save_verification_code_to_redis": "Redisに認証コードの保存に失敗しました",
     "failed_to_increment_resend_count": "再送回数のインクリメントに失敗しました",
     "failed_to_send_email": "メールの送信に失敗しました",
-    "user_registration_successful": "ユーザー登録に成功しました。認証コードをメールで確認してください。",
+    "user_registration_success": "ユーザー登録に成功しました。認証コードをメールで確認してください。",
     "password_encryption_failed": "パスワードの暗号化に失敗しました",
     "user_updated_successfully": "ユーザー情報が更新されました",
     "authorization_token_not_provided": "認証トークンが提供されていません",
@@ -69,5 +69,7 @@
     "resend_verification_code": "認証コードを再送",
     "send": "送信",
     "new_password": "新しいパスワード",
-    "email_send_failed": "メール送信に失敗しました"
+    "email_send_failed": "メール送信に失敗しました",
+    "account_not_activated_resend_verification": "アカウントが有効化されていません。認証メールを再送しました。",
+    "account_already_activated": "アカウントは既に有効化されています"
 }

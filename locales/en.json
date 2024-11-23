@@ -11,7 +11,7 @@
     "failed_to_save_verification_code_to_redis": "Failed to save verification code to Redis",
     "failed_to_increment_resend_count": "Failed to increment resend count",
     "failed_to_send_email": "Failed to send email",
-    "user_registration_successful": "User registration successful. Please check your email for the verification code.",
+    "user_registration_success": "User registration successful. Please check your email for the verification code.",
     "password_encryption_failed": "Password encryption failed",
     "user_updated_successfully": "User updated successfully",
     "authorization_token_not_provided": "Authorization token not provided",
@@ -64,7 +64,9 @@
     "send_password_reset_email": "Send password reset email",
     "reset_password": "Reset password",
     "verify": "Verify",
-    "resend_verification_code": "Resend verification code",
+    "resend_verification_code": "Resend code",
     "send": "Send",
-    "email_send_failed": "Failed to send email"
+    "email_send_failed": "Failed to send email",
+    "account_not_activated_resend_verification": "Account not activated. Verification email resent.",
+    "account_already_activated": "Account already activated"
 }

@@ -94,8 +94,6 @@ func Register(c *gin.Context) {
 
 // ユーザーのログインを処理する関数
 func Login(c *gin.Context) {
-	// url := os.Getenv("APP_URL") // アプリケーションのURLを環境変数から取得
-
 	var input struct {
 		Email    string `json:"email"`    // メールアドレス
 		Password string `json:"password"` // パスワード
@@ -122,31 +120,7 @@ func Login(c *gin.Context) {
 
 	// ユーザがアクティブかどうかを確認
 	if (!user.IsActive) {
-		// // 4桁の認証コードを生成
-		rand.Seed(time.Now().UnixNano())
-		verificationCode := fmt.Sprintf("%04d", rand.Intn(10000))
-
-		// Redisに保存されている認証コードを削除
-		if err := config.RDB.Del(context.Background(), input.Email).Err(); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": config.Localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "verification_code_delete_failed"})})
-			return
-		}
-
-		// Redisに認証コードを保存
-		if err := config.RDB.Set(context.Background(), user.Email, verificationCode, 10*time.Minute).Err(); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": config.Localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "verification_code_save_failed"})})
-			return
-		}
-
-		// 認証コードをメールで送信
-		subject := "Your Verification Code"
-		body := fmt.Sprintf("Your verification code is: %s", verificationCode)
-		if err := auth.SendEmail(user.Email, subject, body); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": config.Localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "email_send_failed"})})
-			return
-		}
-
-        // 認証コードの入力画面にリダイレクトする。
+		// ユーザがアクティブでない場合、認証コードの入力画面にリダイレクトする。
 		c.JSON(http.StatusSeeOther, gin.H{"error": config.Localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "account_not_activated_resend_verification"})})
         return
 		// ここで処理を終了して、認証コードの入力画面にリダイレクトする
@@ -262,6 +236,19 @@ func ResendVerificationCode(c *gin.Context) {
         return
     }
 
+	// ユーザーが存在するか確認
+	var user models.User
+	if err := config.DB.Where("email = ?", input.Email).First(&user).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": config.Localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "user_not_found"})})
+		return
+	}
+
+	// ユーザがアクティブかどうかを確認
+	if (user.IsActive) {
+		c.JSON(http.StatusConflict, gin.H{"error": config.Localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "account_already_activated"})})
+		return
+	}
+
     // 再送回数のチェック
     resendKey := fmt.Sprintf("resend_count_%s", input.Email)
     resendCount, err := config.RDB.Get(context.Background(), resendKey).Int()
@@ -270,6 +257,7 @@ func ResendVerificationCode(c *gin.Context) {
         return
     }
 
+	// 再送回数が3回を超えた場合、エラーメッセージを返す
     if resendCount >= 3 {
 		c.JSON(http.StatusTooManyRequests, gin.H{"error": config.Localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "resend_limit_reached"})})
         return
@@ -291,6 +279,14 @@ func ResendVerificationCode(c *gin.Context) {
         return
     }
 
+    // 認証コードをメールで送信
+    subject := "Your Verification Code"
+    body := fmt.Sprintf("Your verification code is: %s", verificationCode)
+    if err := auth.SendEmail(input.Email, subject, body); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": config.Localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "email_send_failed"})})
+        return
+    }
+
     // 再送回数をインクリメント
     if err := config.RDB.Incr(context.Background(), resendKey).Err(); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": config.Localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "failed_to_increment_resend_count"})})
@@ -299,14 +295,6 @@ func ResendVerificationCode(c *gin.Context) {
     // 再送回数の有効期限を12時間に設定
     if err := config.RDB.Expire(context.Background(), resendKey, 12*time.Hour).Err(); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": config.Localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "failed_to_set_resend_count_expiration"})})
-        return
-    }
-
-    // 認証コードをメールで送信
-    subject := "Your Verification Code"
-    body := fmt.Sprintf("Your verification code is: %s", verificationCode)
-    if err := auth.SendEmail(input.Email, subject, body); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": config.Localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "email_send_failed"})})
         return
     }
 
@@ -331,6 +319,29 @@ func RequestPasswordReset(c *gin.Context) {
         return
     }
 
+	// ユーザがアクティブかどうかを確認
+	if (!user.IsActive) {
+		// ユーザがアクティブでない場合、認証コードの入力画面にリダイレクトする。
+		c.JSON(http.StatusSeeOther, gin.H{"error": config.Localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "account_not_activated_resend_verification"})})
+		return
+		// ここで処理を終了して、認証コードの入力画面にリダイレクトする
+	}
+
+	// 再送回数のチェック
+	resendKey := fmt.Sprintf("resend_count_%s", user.Email)
+	resendCount, err := config.RDB.Get(context.Background(), resendKey).Int()
+	if err != nil && err != redis.Nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": config.Localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "failed_to_check_resend_count"})})
+		return
+	}
+
+	// 再送回数が3回を超えた場合、エラーメッセージを返す
+    if resendCount >= 3 {
+		c.JSON(http.StatusTooManyRequests, gin.H{"error": config.Localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "resend_limit_reached"})})
+        return
+    }
+
+
     // トークンを生成,useridをキーにしてRedisに保存
 	token, err := auth.GenerateJWT(user.ID)
     if err != nil {
@@ -352,6 +363,18 @@ func RequestPasswordReset(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": config.Localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "email_send_failed"})})
         return
     }
+
+    // 再送回数をインクリメント
+    if err := config.RDB.Incr(context.Background(), resendKey).Err(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": config.Localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "failed_to_increment_resend_count"})})
+        return
+    }
+    // 再送回数の有効期限を12時間に設定
+    if err := config.RDB.Expire(context.Background(), resendKey, 12*time.Hour).Err(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": config.Localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "failed_to_set_resend_count_expiration"})})
+        return
+    }
+
 
 	c.JSON(http.StatusOK, gin.H{"message": config.Localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "password_reset_link_sent"})})
 }

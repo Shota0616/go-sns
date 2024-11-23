@@ -129,8 +129,7 @@ const Auth = ({ open, handleClose }) => {
             navigate('/auth/verify'); // 登録成功後にメールの検証画面にリダイレクト
         } catch (error) {
             // エラーレスポンスの処理
-            console.log(error.response.data.error);
-            if (error) {
+            if (error.response && error.response.data && error.response.data.error) {
                 setMessage(error.response.data.error);
             } else {
                 setMessage(t('registration_failed'));
@@ -164,7 +163,7 @@ const Auth = ({ open, handleClose }) => {
             // エラーレスポンスの処理
 
             if (error.response.status === 303) {
-                navigate("/auth/verify", { state: { error: error.response.data.message } });
+                navigate("/auth/verify", { state: { message: error.response.data.error, messageType: 'error' } });
             } else {
                 setMessage(t('login_failed'));
             }
@@ -274,7 +273,7 @@ const Auth = ({ open, handleClose }) => {
     const renderRegister = () => {
         return (
             // <Box component="form" onSubmit={(e) => { e.preventDefault(); handleRegister(username, password, email, setMessage, setMessageType, navigate) }} sx={{ mt: 2 }}>
-            <Box component="form" onSubmit={(e) => { e.preventDefault(); handleRegister(username, password, email) }} sx={{ mt: 2 }}>
+            <Box component="form" onSubmit={(e) => { e.preventDefault(); handleRegister(username, password, email, setMessage, setMessageType, navigate) }} sx={{ mt: 2 }}>
 
                 <TextField
                     label={t('username')}
@@ -351,7 +350,7 @@ const Auth = ({ open, handleClose }) => {
 
     const renderLogin = () => {
         return (
-            <Box component="form" onSubmit={(e) => {e.preventDefault(); handleLogin(password, email)} } sx={{ mt: 2 }}>
+            <Box component="form" onSubmit={(e) => {e.preventDefault(); handleLogin(email, password, setMessage, setMessageType, navigate)} } sx={{ mt: 2 }}>
                 <TextField
                     label={t('email')}
                     value={email}
@@ -415,7 +414,7 @@ const Auth = ({ open, handleClose }) => {
 
     const renderVerify = () => {
         return (
-            <Box component="form" onSubmit={(e) => {e.preventDefault(); handleVerify(email, verificationCode)}} sx={{ mt: 2 }}>
+            <Box component="form" onSubmit={(e) => {e.preventDefault(); handleVerify(email, verificationCode, setMessage, setMessageType, navigate)}} sx={{ mt: 2 }}>
                 <TextField
                     label={t('verification_code')}
                     value={verificationCode}
