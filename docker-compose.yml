@@ -1,0 +1,120 @@
+version: '3.8'
+
+services:
+  react:
+    build:
+      context: ./react
+    volumes:
+      - ./react/project:/var/www/vite-project
+      - ./locales:/var/www/locales
+    environment:
+      TZ: ${TZ}
+      GO_API_URL: ${GO_API_URL}
+      NODE_ENV: ${ENV_MODE}
+      APP_LANG: ${APP_LANG}
+    ports:
+      - "3000:3000"
+      - "5173:5173"
+    expose:
+      - "3000"
+    tty: true
+    stdin_open: true
+    networks:
+      go_app_net:
+        ipv4_address: 192.168.111.101
+
+  go:
+    build:
+      context: ./go
+    volumes:
+      - ./go:/usr/src/app
+      - ./locales:/usr/src/locales
+    environment:
+      TZ: ${TZ}
+      EMAIL_ADDRESS: ${EMAIL_ADDRESS}
+      EMAIL_PASSWORD: ${EMAIL_PASSWORD}
+      APP_URL: ${APP_URL}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET : ${JWT_REFRESH_SECRET}
+      NODE_ENV: ${ENV_MODE}
+      APP_LANG: ${APP_LANG}
+    ports:
+      - "8080:8080"
+    expose:
+      - "8080"
+    tty: true
+    stdin_open: true
+    depends_on:
+      - mysql
+    networks:
+      go_app_net:
+        ipv4_address: 192.168.111.102
+
+  nginx:
+    build:
+      context: ./nginx
+    volumes:
+      - ./nginx/:/etc/nginx/
+      - ./react/project/dist:/usr/share/nginx/html
+    environment:
+      TZ: ${TZ}
+      NODE_ENV: ${ENV_MODE}  # NODE_ENVを追加
+    ports:
+      - "8000:8000"
+    expose:
+      - "8000"
+    tty: true
+    stdin_open: true
+    depends_on:
+      - react
+      - go
+    networks:
+      go_app_net:
+        ipv4_address: 192.168.111.103
+
+  mysql:
+    build:
+      context: ./mysql
+    volumes:
+      - ./redis/data:/data
+      - ./mysql/data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      TZ: ${TZ}
+      NODE_ENV: ${ENV_MODE}  # NODE_ENVを追加
+    ports:
+      - "3306:3306"
+    expose:
+      - "3306"
+    tty: true
+    stdin_open: true
+    networks:
+      go_app_net:
+        ipv4_address: 192.168.111.104
+
+  redis:
+    build:
+      context: ./redis
+    environment:
+      TZ: ${TZ}
+      NODE_ENV: ${ENV_MODE}  # NODE_ENVを追加
+    ports:
+      - "6379:6379"
+    expose:
+      - "6379"
+    tty: true
+    stdin_open: true
+    networks:
+      go_app_net:
+        ipv4_address: 192.168.111.105
+
+networks:
+  go_app_net:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 192.168.111.0/24
