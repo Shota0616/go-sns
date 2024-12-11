@@ -31,17 +31,20 @@ func SetupRouter() *gin.Engine {
 		public.POST("/request-password-reset", controllers.RequestPasswordReset) // パスワード再設定リクエストのエンドポイントを追加
 		public.POST("/resend-verification-code", controllers.ResendVerificationCode) // メール認証コード再送のエンドポイントを追加
 		public.POST("/reset-password", controllers.ResetPassword) // パスワード再設定のエンドポイントを追加
-		// サーバ側でトークンを管理するときは以下を追加
-		// public.POST("/logout", controllers.Logout)
+		public.POST("/posts", controllers.CreatePost) // 投稿
+		// protected.GET("/followers/:id", controllers.GetFollowers)
+        // protected.GET("/following/:id", controllers.GetFollowing)
+		public.GET("/user/:id", controllers.GetUser) // ユーザー情報取得
+        public.GET("/user/:id/posts", controllers.GetPostsByUser) // ユーザーの投稿一覧取
 	}
 
 	// 認証が必要なルート
 	protected := router.Group("/api")
 	protected.Use(middleware.AuthRequired())
 	{
-		// protected.GET("/mypage", controllers.GetMyPage) // マイページ
-		protected.GET("/getuser", controllers.GetUser) // ユーザー情報取得
-		// その他の保護されたルート
+		protected.POST("/follow", controllers.FollowUser)
+        protected.POST("/unfollow", controllers.UnfollowUser)
+		protected.GET("/getuser", controllers.GetAuthUser) // ログインユーザー情報取得
 	}
 
 	return router

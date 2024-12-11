@@ -10,5 +10,6 @@ export default defineConfig({
   // buildしたファイルのアウトプット先
   build: {
     outDir: 'dist'
-  }
+  },
+  assetsInclude: ['**/*.png', '**/*.jpg', '**/*.jpeg', '**/*.gif', '**/*.svg'], // 画像形式を追加
 })

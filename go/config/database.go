@@ -23,7 +23,7 @@ func MigrateDatabase() {
 	if DB == nil {
 		panic("Database connection is not initialized!")
 	}
-	DB.AutoMigrate(&models.User{})
+	DB.AutoMigrate(&models.User{}, &models.Follow{}, &models.Post{})
 	fmt.Println("Database migrated!")
 }
 

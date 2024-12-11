@@ -1,8 +1,9 @@
 import { Route, Routes } from 'react-router-dom';
 import Auth from '/src/components/Auth';
 import Logout from '/src/components/Logout';
-import MyPage from '/src/components/MyPage'; // インポート
+import MyPage from '/src/components/UserPage'; // インポート
 import Home from '/src/components/Home'; // インポート
+import Post from '/src/components/Post'; // インポート
 
 const RoutesConfig = () => {
     return (
@@ -18,6 +19,9 @@ const RoutesConfig = () => {
                 <Route path="/logout" element={<Logout />} />
                 {/* マイページ */}
                 <Route path="/mypage" element={<MyPage />} />
+                {/* 投稿ページ */}
+                <Route path="/posts" element={<Post />} />
+                {/* ホーム */}
 
                 <Route path="/" element={<Home />} />
             </Routes>

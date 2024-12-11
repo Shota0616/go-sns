@@ -12,6 +12,7 @@ services:
       GO_API_URL: ${GO_API_URL}
       NODE_ENV: ${ENV_MODE}
       APP_LANG: ${APP_LANG}
+      APP_URL: ${APP_URL}
     ports:
       - "3000:3000"
       - "5173:5173"
@@ -29,6 +30,7 @@ services:
     volumes:
       - ./go:/usr/src/app
       - ./locales:/usr/src/locales
+      - ./go/uploads:/usr/src/uploads
     environment:
       TZ: ${TZ}
       EMAIL_ADDRESS: ${EMAIL_ADDRESS}
@@ -56,6 +58,7 @@ services:
     volumes:
       - ./nginx/:/etc/nginx/
       - ./react/project/dist:/usr/share/nginx/html
+      - ./go/uploads:/usr/src/app/uploads
     environment:
       TZ: ${TZ}
       NODE_ENV: ${ENV_MODE}  # NODE_ENVを追加

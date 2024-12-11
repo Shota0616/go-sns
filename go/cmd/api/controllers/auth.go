@@ -8,6 +8,7 @@ import (
 	"time"
 	"strings"
 	"os"
+	"log"
 
 
 	"github.com/gin-gonic/gin"
@@ -21,16 +22,19 @@ import (
 
 // ユーザー登録を処理する関数
 func Register(c *gin.Context) {
-	var input struct {
-		Username string `json:"username"`
-		Password string `json:"password"`
-		Email    string `json:"email"`
-	}
+    var input struct {
+        Username string `form:"username"`
+        Password string `form:"password"`
+        Email    string `form:"email"`
+    }
 
-	// リクエストのJSONボディを構造体にバインド
-    if err := c.ShouldBindJSON(&input); err != nil {
-		// 400 Bad Request
-		c.JSON(http.StatusBadRequest, gin.H{"error": config.Localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "invalid_input"})})
+    // リクエストのフォームデータを構造体にバインド
+    if err := c.ShouldBind(&input); err != nil {
+		// エラーメッセージをログに出力
+		log.Println("Binding error:", err)
+
+        // 400 Bad Request
+        c.JSON(http.StatusBadRequest, gin.H{"error": config.Localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "invalid_input"})})
         return
     }
 
@@ -43,53 +47,71 @@ func Register(c *gin.Context) {
 		return
 	}
 
-	user := models.User{
-		Username: input.Username,
-		Password: string(hashedPassword),
-		Email:    input.Email,
-		IsActive: false,
-	}
+	// プロフィール画像の処理
+    var profileImageURL string
+    file, err := c.FormFile("profileImage")
+    if err == nil {
+        // ファイルサイズ制限 (2MB)
+        if file.Size > 2*1024*1024 {
+            c.JSON(http.StatusBadRequest, gin.H{"error": config.Localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "image_size_exceeded"})})
+            return
+        }
 
-	// ユーザーをデータベースに保存, エラーが発生したらエラーメッセージをjsonで返す
-	if err := config.DB.Create(&user).Error; err != nil {
-		var errorMessage string
-		switch {
-		case strings.Contains(err.Error(), "for key 'users.uni_users_email'"):
-			errorMessage = config.Localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "email_already_registered"})
-		case strings.Contains(err.Error(), "for key 'users.uni_users_username'"):
-			errorMessage = config.Localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "username_already_registered"})
-		default:
-			errorMessage = config.Localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "user_registration_failed"})
-		}
-		// 409 Conflict
-		c.JSON(http.StatusConflict, gin.H{"error": errorMessage})
-		// c.JSON(http.StatusConflict, gin.H{"error": config.Localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: errorMessage})})
-		return
-	}
+        // ファイルを保存する処理
+        filePath := fmt.Sprintf("uploads/%d_%s", time.Now().Unix(), file.Filename)
+        if err := c.SaveUploadedFile(file, filePath); err != nil {
+            c.JSON(http.StatusInternalServerError, gin.H{"error": config.Localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "image_upload_failed"})})
+            return
+        }
+        profileImageURL = filePath
+    }
 
+    user := models.User{
+        Username: input.Username,
+        Password: string(hashedPassword),
+        Email:    input.Email,
+        IsActive: false,
+        ProfileImageURL: profileImageURL,
+    }
 
-	// 4桁の認証コードを生成
-	rand.Seed(time.Now().UnixNano())
-	verificationCode := fmt.Sprintf("%04d", rand.Intn(10000))
+    // ユーザーをデータベースに保存, エラーが発生したらエラーメッセージをjsonで返す
+    if err := config.DB.Create(&user).Error; err != nil {
+        var errorMessage string
+        switch {
+        case strings.Contains(err.Error(), "for key 'users.uni_users_email'"):
+            errorMessage = config.Localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "email_already_registered"})
+        case strings.Contains(err.Error(), "for key 'users.uni_users_username'"):
+            errorMessage = config.Localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "username_already_registered"})
+        default:
+            errorMessage = config.Localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "user_registration_failed"})
+        }
+        // 409 Conflict
+        c.JSON(http.StatusConflict, gin.H{"error": errorMessage})
+        return
+    }
 
-	// Redisに認証コードを保存
-	if err := config.RDB.Set(context.Background(), user.Email, verificationCode, 10*time.Minute).Err(); err != nil {
-		// 500 Internal Server Error
-		c.JSON(http.StatusInternalServerError, gin.H{"error": config.Localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "verification_code_save_failed"})})
-		return
-	}
+    // 4桁の認証コードを生成
+    rand.Seed(time.Now().UnixNano())
+    verificationCode := fmt.Sprintf("%04d", rand.Intn(10000))
+
+    // Redisに認証コードを保存
+    if err := config.RDB.Set(context.Background(), user.Email, verificationCode, 10*time.Minute).Err(); err != nil {
+        // 500 Internal Server Error
+        c.JSON(http.StatusInternalServerError, gin.H{"error": config.Localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "verification_code_save_failed"})})
+        return
+    }
 
     // 認証コードをメールで送信
     subject := "Your Verification Code"
     body := fmt.Sprintf("Your verification code is: %s", verificationCode)
     if err := auth.SendEmail(user.Email, subject, body); err != nil {
-		// 500 Internal Server Error
-		c.JSON(http.StatusInternalServerError, gin.H{"error": config.Localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "email_send_failed"})})
+        // 500 Internal Server Error
+        c.JSON(http.StatusInternalServerError, gin.H{"error": config.Localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "email_send_failed"})})
         return
     }
 
-	// 201 Created
-	c.JSON(http.StatusOK, gin.H{"message": config.Localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "user_registration_success"})})
+    // 201 Created
+    c.JSON(http.StatusOK, gin.H{"message": config.Localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "user_registration_success"})})
 }
 
 // ユーザーのログインを処理する関数

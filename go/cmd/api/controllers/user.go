@@ -7,31 +7,58 @@ import (
 	"github.com/Shota0616/go-sns/models"
 	"github.com/Shota0616/go-sns/auth"
 	"golang.org/x/crypto/bcrypt"
-	"log"
 	"github.com/nicksnyder/go-i18n/v2/i18n"
 )
 
 func GetUser(c *gin.Context) {
+    id := c.Param("id")
+    var user models.User
+    if err := config.DB.Where("id = ?", id).First(&user).Error; err != nil {
+        c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+        return
+    }
+
+    tokenStr := c.GetHeader("Authorization")
+    if tokenStr != "" {
+        claims, err := auth.ValidateJWT(tokenStr)
+        if err == nil && claims.ID == user.ID {
+            // ログインしているユーザー自身の場合、すべての情報を返す
+            c.JSON(http.StatusOK, gin.H{
+                "id":       user.ID,
+                "username": user.Username,
+                "email":    user.Email,
+                "bio":      user.Bio,
+                "profile_image_url": user.ProfileImageURL,
+            })
+            return
+        }
+    }
+
+    // 他のユーザーの場合、制限された情報を返す
+    c.JSON(http.StatusOK, gin.H{
+        "id":       user.ID,
+        "username": user.Username,
+        "bio":      user.Bio,
+        "profile_image_url": user.ProfileImageURL,
+    })
+}
+
+func GetAuthUser(c *gin.Context) {
 	tokenStr := c.GetHeader("Authorization")
-
-	log.Println(tokenStr)
-
 	if tokenStr == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": config.Localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "authorization_token_not_provided"})})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization token not provided"})
 		return
 	}
 
 	claims, err := auth.ValidateJWT(tokenStr)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": config.Localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "invalid_token"})})
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 		return
 	}
 
-	userID := claims.ID
-
 	var user models.User
-	if err := config.DB.Where("id = ?", userID).First(&user).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": config.Localizer.MustLocalize(&i18n.LocalizeConfig{MessageID: "user_not_found"})})
+	if err := config.DB.Where("id = ?", claims.ID).First(&user).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
 
@@ -39,7 +66,8 @@ func GetUser(c *gin.Context) {
 		"id":       user.ID,
 		"username": user.Username,
 		"email":    user.Email,
-		"active":   user.IsActive,
+		"bio":      user.Bio,
+		"profile_image_url": user.ProfileImageURL,
 	})
 }
 

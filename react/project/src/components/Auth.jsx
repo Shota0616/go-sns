@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
-import { Box, Button, TextField, Typography, Paper, IconButton, InputAdornment } from '@mui/material';
+import { Box, Button, TextField, Typography, Paper, IconButton, InputAdornment, Avatar } from '@mui/material';
 import { useTranslation } from 'react-i18next';
-import { Visibility, VisibilityOff } from '@mui/icons-material';
+import { Visibility, VisibilityOff, AccountCircle, Edit } from '@mui/icons-material';
+import { useUser } from '/src/context/UserContext';
 
 // 認証状態を管理するカスタムフック
 const useAuthState = () => {
@@ -23,6 +24,9 @@ const useAuthState = () => {
     const [newPassword, setNewPassword] = useState('');
     // トークンの状態を管理
     const [token, setToken] = useState('');
+    // プロフィール画像の状態を管理
+    const [profileImage, setProfileImage] = useState(null);
+    const [profileImageError, setProfileImageError] = useState(false);
 
     // 状態とその更新関数を返す
     return {
@@ -42,15 +46,41 @@ const useAuthState = () => {
         setNewPassword,
         token,
         setToken,
+        profileImage,
+        setProfileImage,
+        profileImageError,
+        setProfileImageError,
     };
 };
 
+const Auth = () => {
+    const {
+        username,
+        setUsername,
+        password,
+        setPassword,
+        email,
+        setEmail,
+        message,
+        setMessage,
+        messageType,
+        setMessageType,
+        verificationCode,
+        setVerificationCode,
+        newPassword,
+        setNewPassword,
+        token,
+        setToken,
+        profileImage,
+        setProfileImage,
+        profileImageError,
+        setProfileImageError,
+    } = useAuthState();
 
-const Auth = ({ open, handleClose }) => {
-    const { username, setUsername, password, setPassword, email, setEmail, message, setMessage, messageType, setMessageType, verificationCode, setVerificationCode, newPassword, setNewPassword, token, setToken } = useAuthState();
     const location = useLocation();
     const navigate = useNavigate();
     const { t } = useTranslation();
+    const { setUser } = useUser();
     const [showPassword, setShowPassword] = useState(false);
     const [emailError, setEmailError] = useState(false);
     const [passwordError, setPasswordError] = useState(false);
@@ -63,36 +93,17 @@ const Auth = ({ open, handleClose }) => {
 
     // ページ遷移時にメッセージをリセット
     useEffect(() => {
-        // location.stateからmessageを取得し、setMessageで状態を更新。messageがない場合は空文字を設定。
         setMessage(location.state?.message || '');
-        // location.stateからmessageTypeを取得し、setMessageTypeで状態を更新。messageTypeがない場合は空文字を設定。
         setMessageType(location.state?.messageType || ''); // メッセージの種類をリセット
-    // location.pathnameまたはlocation.stateが変更されるたびにこのuseEffectが実行される。
     }, [location.pathname, location.state]);
 
     useEffect(() => {
-        // location.searchからクエリパラメータを取得し、URLSearchParamsオブジェクトを作成。
         const params = new URLSearchParams(location.search);
-        // クエリパラメータから'token'を取得。
         const token = params.get('token');
-        // tokenが存在する場合、setTokenで状態を更新。
         if (token) {
             setToken(token);
         }
-    // location.searchが変更されるたびにこのuseEffectが実行される。
     }, [location.search]);
-
-    // useEffect(() => {
-    //     // location.searchからクエリパラメータを取得し、URLSearchParamsオブジェクトを作成。
-    //     const params = new URLSearchParams(location.search);
-    //     // クエリパラメータから'email'を取得。
-    //     const emailParam = params.get('email');
-    //     // emailParamが存在する場合、setEmailで状態を更新。
-    //     if (emailParam) {
-    //         setEmail(emailParam);
-    //     }
-    // // location.searchが変更されるたびにこのuseEffectが実行される。
-    // }, [location.search]);
 
     // ページ遷移時にエラーメッセージをリセット
     useEffect(() => {
@@ -103,13 +114,8 @@ const Auth = ({ open, handleClose }) => {
         setNewPasswordError(false);
     }, [location.pathname]);
 
-    //////////////////////////////////////////
-    ///////////// 各種処理の関数 ///////////////
-    //////////////////////////////////////////
-
-    // 新規登録の処理
-    const handleRegister = async (username, password, email, setMessage, setMessageType, navigate) => {
-        // ユーザー名、パスワード、メールアドレスのいずれかが空の場合、エラーメッセージを設定して処理を終了
+    // ユーザーの登録処理
+    const handleRegister = async (username, password, email, profileImage, setMessage, setMessageType, navigate) => {
         if (!username || !password || !email) {
             setUsernameError(!username);
             setEmailError(!email);
@@ -117,26 +123,45 @@ const Auth = ({ open, handleClose }) => {
             return;
         }
 
-        // ユーザー名、パスワード、メールアドレスをサーバーに送信して新規登録
+        if (profileImage && profileImage.size > 2 * 1024 * 1024) { // 2MB制限
+            setProfileImageError(true);
+            setMessage(t('image_size_exceeded'));
+            setMessageType('error');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('username', username);
+        formData.append('password', password);
+        formData.append('email', email);
+        if (profileImage) {
+            formData.append('profileImage', profileImage);
+        }
+
+        // リクエストデータをコンソールにログ出力
+        for (let [key, value] of formData.entries()) {
+            console.log(`${key}: ${value}`);
+        }
+
         try {
-            const response = await axios.post(`${import.meta.env.VITE_APP_API_URL}/api/register`, {
-                username,
-                password,
-                email,
+            const response = await axios.post(`${import.meta.env.VITE_APP_API_URL}/api/register`, formData, {
+                headers: {
+                    'Content-Type': 'multipart/form-data',
+                },
             });
             setMessage(response.data.message);
-            setMessageType('success'); // 成功メッセージの種類を設定
-            navigate('/auth/verify'); // 登録成功後にメールの検証画面にリダイレクト
+            setMessageType('success');
+            navigate('/auth/verify');
         } catch (error) {
-            // エラーレスポンスの処理
             if (error.response && error.response.data && error.response.data.error) {
                 setMessage(error.response.data.error);
             } else {
                 setMessage(t('registration_failed'));
             }
-            setMessageType('error'); // エラーメッセージの種類を設定
+            setMessageType('error');
         }
     };
+
 
     // ログインの処理
     const handleLogin = async (email, password, setMessage, setMessageType, navigate) => {
@@ -154,11 +179,10 @@ const Auth = ({ open, handleClose }) => {
             });
 
             localStorage.setItem('token', response.data.token); // アクセストークンをlocalStorageに保存
-            localStorage.setItem('refrestoken', response.data.refreshtoken); // リフレッシュトークンも保存
+            localStorage.setItem('refreshtoken', response.data.refreshtoken); // リフレッシュトークンも保存
             window.dispatchEvent(new Event("storage")); // storageイベントを発火
             setMessage(t('login_successful')); // 成功メッセージを設定
             setMessageType('success'); // 成功メッセージの種類を設定
-
         } catch (error) {
             // エラーレスポンスの処理
 
@@ -170,6 +194,7 @@ const Auth = ({ open, handleClose }) => {
             setMessageType('error'); // エラーメッセージの種類を設定
         }
     };
+
 
     // 認証コードの処理
     const handleVerify = async (email, verificationCode, setMessage, setMessageType, navigate) => {
@@ -197,6 +222,7 @@ const Auth = ({ open, handleClose }) => {
         }
     };
 
+
     // 認証コードの再送信の処理
     const handleResendVerificationCode = async (email, setMessage, setMessageType) => {
         // メールアドレスが空の場合、エラーメッセージを設定して処理を終了
@@ -216,6 +242,8 @@ const Auth = ({ open, handleClose }) => {
         }
     };
 
+
+    // パスワードリセットの処理
     const handleRequestPasswordReset = async (email, setMessage, setMessageType) => {
         // メールアドレスが空の場合、エラーメッセージを設定して処理を終了
         if (!email) {
@@ -237,6 +265,7 @@ const Auth = ({ open, handleClose }) => {
             setMessageType('error');
         }
     };
+
 
     const handleResetPassword = async (token, newPassword, setMessage, setMessageType, navigate) => {
         // 新しいパスワードが空の場合、エラーメッセージを設定して処理を終了
@@ -263,18 +292,13 @@ const Auth = ({ open, handleClose }) => {
     };
 
 
-
-    //////////////////////////////////////////
-    ///////////// 各種render処理 ///////////////
-    //////////////////////////////////////////
-
-
+//////////////////////////////////////////
+///////////// 各種render処理 ///////////////
+//////////////////////////////////////////
 
     const renderRegister = () => {
         return (
-            // <Box component="form" onSubmit={(e) => { e.preventDefault(); handleRegister(username, password, email, setMessage, setMessageType, navigate) }} sx={{ mt: 2 }}>
-            <Box component="form" onSubmit={(e) => { e.preventDefault(); handleRegister(username, password, email, setMessage, setMessageType, navigate) }} sx={{ mt: 2 }}>
-
+            <Box component="form" onSubmit={(e) => { e.preventDefault(); handleRegister(username, password, email, profileImage, setMessage, setMessageType, navigate) }} sx={{ mt: 2 }}>
                 <TextField
                     label={t('username')}
                     value={username}
@@ -336,11 +360,46 @@ const Auth = ({ open, handleClose }) => {
                         style: {
                             backgroundColor: 'rgba(255, 255, 255, 0.1)',
                             color: 'white',
-                        },                    }}
+                        },
+                    }}
                     InputLabelProps={{
                         style: { color: 'white' },
                     }}
                 />
+                <input
+                    accept="image/*"
+                    style={{ display: 'none' }}
+                    id="profile-image-upload"
+                    type="file"
+                    onChange={(e) => {
+                        setProfileImage(e.target.files[0]);
+                        setProfileImageError(false);
+                    }}
+                />
+                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 0, position: 'relative' }}>
+                    <label htmlFor="profile-image-upload">
+                        <IconButton component="span">
+                            <Avatar
+                                src={profileImage ? URL.createObjectURL(profileImage) : null}
+                                alt="Profile Image"
+                                sx={{ width: 80, height: 80 }}
+                            >
+                                {!profileImage && <AccountCircle sx={{ width: 80, height: 80, color: 'white' }} />}
+                            </Avatar>
+                            <Box sx={{ display: 'flex', alignItems: 'center', position: 'absolute', bottom: 0, right: 0, bgcolor: '#242424', border: '1px solid #666666', borderRadius: 1, py: 0.3, px: 0.5 }}>
+                                <Edit sx={{ color: 'white', fontSize: 16 }} />
+                                <Typography variant="body2" sx={{ color: 'white', ml: 0 }}>
+                                    Edit
+                                </Typography>
+                            </Box>
+                        </IconButton>
+                    </label>
+                </Box>
+                {profileImageError && (
+                    <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+                        {t('image_size_exceeded')}
+                    </Typography>
+                )}
                 <Button type="submit" variant="contained" color="primary" sx={{ mt: 2, width: '50%', mx: 'auto', display: 'block', height: 50, borderRadius: 3 }}>
                     {t('register')}
                 </Button>
@@ -403,11 +462,18 @@ const Auth = ({ open, handleClose }) => {
                 <Button type="submit" variant="contained" color="primary" sx={{ mt: 2, width: '50%', mx: 'auto', display: 'block', height: 50, borderRadius: 3 }}>
                     {t('login')}
                 </Button>
-                <Typography variant="body2" sx={{ mt: 2, textAlign: 'center' }}>
-                    <Link to="/auth/request-password-reset" style={{ color: '#1976d2', textDecoration: 'none' }}>
-                        {t('forgot_password')}
-                    </Link>
-                </Typography>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+                    <Typography variant="body2" sx={{ textAlign: 'left' }}>
+                        <Link to="/auth/request-password-reset" style={{ color: '#1976d2', textDecoration: 'none' }}>
+                            {t('forgot_password')}
+                        </Link>
+                    </Typography>
+                    <Typography variant="body2" sx={{ textAlign: 'right' }}>
+                        <Link to="/auth/register" style={{ color: '#1976d2', textDecoration: 'none' }}>
+                            {t('do_you_have_an_account')}
+                        </Link>
+                    </Typography>
+                </Box>
             </Box>
         );
     };
