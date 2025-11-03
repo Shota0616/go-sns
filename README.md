@@ -31,6 +31,12 @@ ENV_MODE="development"
 # 言語設定（en or ja）
 APP_LANG="en"
 ```
+
+SECRETの生成
+```
+openssl rand -base64 32
+```
+
 2. コンテナ作成
 ```
 docker-compose up --build
